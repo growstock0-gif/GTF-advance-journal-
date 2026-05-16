@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#0B0B12"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="TradeLog"/>
+<meta name="description" content="Premium Trading Journal"/>
+<title>TradeLog</title>
+<script>
+  const _m={name:"TradeLog",short_name:"TradeLog",start_url:"./",display:"standalone",background_color:"#0B0B12",theme_color:"#0B0B12",icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%230B0B12'/%3E%3Ctext x='256' y='330' text-anchor='middle' font-size='280'%3E📈%3C/text%3E%3C/svg%3E",sizes:"512x512",type:"image/svg+xml"}]};
+  const _b=new Blob([JSON.stringify(_m)],{type:'application/json'});
+  document.write('<link rel="manifest" href="'+URL.createObjectURL(_b)+'">');
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#08080f; --s1:#0f0f1c; --s2:#141424; --s3:#1a1a2e;
+  --bdr:rgba(255,255,255,0.06); --bdr2:rgba(255,255,255,0.1);
+  --acc:#6C63FF; --accH:#8b83ff; --accBg:rgba(108,99,255,0.1);
+  --green:#00C896; --red:#FF5C7A; --amber:#F59E0b; --blue:#60A5FA;
+  --gBg:rgba(0,200,150,0.08); --rBg:rgba(255,92,122,0.08);
+  --aBg:rgba(245,158,11,0.08); --bBg:rgba(96,165,250,0.08);
+  --tx:#ffffff; --sub:#9CA3AF; --mut:#4B5563;
+  --sidebar:240px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(--tx);}
+
+/* ── Auth Screen ── */
+#auth-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:0;}
+#auth-screen.hidden{display:none;}
+.auth-card{background:var(--s1);border:1px solid var(--bdr2);border-radius:28px;padding:52px 44px;text-align:center;width:420px;max-width:94vw;box-shadow:0 32px 80px rgba(0,0,0,.5);}
+.auth-logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--acc),var(--accH));display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 20px;}
+.auth-title{font-size:28px;font-weight:800;letter-spacing:-.04em;margin-bottom:8px;}
+.auth-sub{font-size:14px;color:var(--sub);margin-bottom:36px;line-height:1.6;}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px 24px;background:#fff;color:#1f1f1f;border:none;border-radius:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .2s;box-shadow:0 2px 12px rgba(0,0,0,.2);}
+.btn-google:hover{background:#f5f5f5;box-shadow:0 4px 20px rgba(0,0,0,.3);transform:translateY(-1px);}
+.btn-google svg{flex-shrink:0;}
+.auth-footer{font-size:12px;color:var(--mut);margin-top:24px;line-height:1.7;}
+#auth-error{color:var(--red);font-size:13px;margin-top:16px;display:none;}
+
+/* ── Sync status ── */
+#sync-indicator{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--mut);padding:5px 12px;border-radius:8px;background:var(--s3);border:1px solid var(--bdr);}
+#sync-dot{width:7px;height:7px;border-radius:50%;background:var(--mut);transition:background .3s;}
+#sync-indicator.syncing #sync-dot{background:var(--amber);animation:pulse 1s infinite;}
+#sync-indicator.synced #sync-dot{background:var(--green);}
+#sync-indicator.error #sync-dot{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── User avatar ── */
+#user-area{display:flex;align-items:center;gap:10px;padding:12px 14px;margin:0 8px 8px;border-radius:12px;background:var(--s3);border:1px solid var(--bdr);}
+#user-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--acc);}
+#user-name{font-size:12px;font-weight:700;color:var(--tx);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#sign-out-btn{background:transparent;border:none;color:var(--mut);cursor:pointer;font-size:14px;padding:4px;border-radius:6px;transition:color .18s;line-height:1;}
+#sign-out-btn:hover{color:var(--red);}
+
+/* ── App Shell ── */
+#shell{display:flex;height:100vh;overflow:hidden;}
+#sidebar{width:var(--sidebar);background:var(--s1);border-right:1px solid var(--bdr);display:flex;flex-direction:column;flex-shrink:0;z-index:10;}
+#logo{padding:24px 20px 20px;border-bottom:1px solid var(--bdr);}
+#logo .icon{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--acc),var(--accH));display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:10px;}
+#logo .name{font-weight:800;font-size:18px;letter-spacing:-.03em;}
+#logo .tagline{font-size:11px;color:var(--mut);margin-top:2px;}
+#nav{padding:16px 12px;flex:1;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;cursor:pointer;transition:all .18s;margin-bottom:4px;font-size:14px;font-weight:600;color:var(--sub);border:none;background:transparent;width:100%;text-align:left;font-family:'Plus Jakarta Sans',sans-serif;}
+.nav-item:hover{background:var(--s3);color:var(--tx);}
+.nav-item.on{background:var(--accBg);color:var(--acc);}
+.nav-item .ni{font-size:18px;width:22px;text-align:center;}
+#sidebar-footer{padding:16px 12px;border-top:1px solid var(--bdr);display:flex;flex-direction:column;gap:8px;}
+.sb-btn{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--sub);background:transparent;border:1px solid var(--bdr);transition:all .18s;font-family:'Plus Jakarta Sans',sans-serif;width:100%;}
+.sb-btn:hover{border-color:var(--acc);color:var(--acc);background:var(--accBg);}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#install-bar{background:var(--accBg);border-bottom:1px solid rgba(108,99,255,.2);padding:10px 20px;display:none;align-items:center;gap:12px;flex-shrink:0;}
+#install-bar.show{display:flex;}
+#topbar{padding:16px 28px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--s1);flex-shrink:0;}
+#topbar h1{font-size:20px;font-weight:800;letter-spacing:-.03em;}
+#topbar .actions{display:flex;gap:10px;align-items:center;}
+#page{flex:1;overflow-y:auto;padding:28px;}
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:99px;}
+.inp{width:100%;background:var(--s3);border:1.5px solid var(--bdr);color:var(--tx);border-radius:12px;padding:11px 14px;font-size:14px;outline:none;transition:all .2s;appearance:none;-webkit-appearance:none;font-family:'Plus Jakarta Sans',sans-serif;}
+.inp::placeholder{color:var(--mut);}
+.inp:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(108,99,255,0.12);}
+select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%236B7280' d='M5 7L0 0h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer;}
+.inp[type=date]::-webkit-calendar-picker-indicator{filter:invert(.4);cursor:pointer;}
+textarea.inp{resize:vertical;line-height:1.6;min-height:80px;}
+.lbl{display:block;font-size:11px;font-weight:700;color:var(--mut);letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px;}
+.btn-p{background:linear-gradient(135deg,var(--acc),var(--accH));color:#fff;border:none;border-radius:11px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .2s;box-shadow:0 4px 16px rgba(108,99,255,.25);}
+.btn-p:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(108,99,255,.35);}
+.btn-g{background:var(--s3);color:var(--sub);border:1.5px solid var(--bdr);border-radius:11px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .2s;}
+.btn-g:hover{border-color:var(--bdr2);color:var(--tx);}
+.btn-danger{background:var(--rBg);color:var(--red);border:1.5px solid rgba(255,92,122,.25);border-radius:11px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .2s;}
+.btn-danger:hover{background:rgba(255,92,122,.15);}
+.card{background:var(--s2);border:1px solid var(--bdr);border-radius:20px;}
+.card-sm{background:var(--s3);border-radius:12px;padding:12px 14px;}
+.pill{border-radius:99px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:.04em;display:inline-block;}
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--mut);letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--bdr);background:var(--s1);position:sticky;top:0;z-index:1;}
+.tbl td{padding:13px 16px;border-bottom:1px solid var(--bdr);font-size:14px;vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr.trow{cursor:pointer;transition:background .12s;}
+.tbl tr.trow:hover{background:rgba(255,255,255,.025);}
+.tbl tr.selected{background:var(--accBg) !important;}
+.mono{font-family:'JetBrains Mono',monospace;}
+#modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(10px);z-index:500;display:none;align-items:center;justify-content:center;}
+#modal-bg.open{display:flex;}
+#modal{background:var(--s1);border:1px solid var(--bdr2);border-radius:24px;width:680px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:28px;}
+#detail-panel{width:340px;background:var(--s1);border-left:1px solid var(--bdr);display:none;flex-direction:column;overflow-y:auto;flex-shrink:0;}
+#detail-panel.open{display:flex;}
+.stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;}
+.stat{background:var(--s2);border:1px solid var(--bdr);border-radius:18px;padding:18px 20px;}
+.stat .sl{font-size:10px;font-weight:700;color:var(--mut);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;}
+.stat .sv{font-size:28px;font-weight:800;letter-spacing:-.04em;line-height:1;}
+.stat .ss{font-size:12px;color:var(--mut);margin-top:6px;}
+.filter-bar{display:flex;gap:8px;margin-bottom:18px;align-items:center;flex-wrap:wrap;}
+.f-btn{background:var(--s3);color:var(--mut);border:1.5px solid var(--bdr);border-radius:9px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;transition:all .18s;font-family:'Plus Jakarta Sans',sans-serif;}
+.f-btn.on{background:var(--accBg);color:var(--acc);border-color:rgba(108,99,255,.4);}
+.f-btn:hover:not(.on){border-color:var(--bdr2);color:var(--tx);}
+.stitle{font-size:11px;font-weight:700;color:var(--mut);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.stitle::before{content:'';width:3px;height:12px;background:var(--acc);border-radius:99px;}
+.mbar-wrap{height:8px;background:var(--s3);border-radius:99px;overflow:hidden;flex:1;}
+.mbar{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.4,0,.2,1);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fi{animation:fi .22s ease both;}
+@keyframes si{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.si{animation:si .22s ease both;}
+
+/* Loading overlay */
+#loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:998;gap:16px;}
+#loading-overlay.hidden{display:none;}
+.spinner{width:40px;height:40px;border:3px solid var(--bdr2);border-top-color:var(--acc);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- Auth Screen -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">📈</div>
+    <div class="auth-title">TradeLog</div>
+    <div class="auth-sub">Your premium cloud trading journal.<br>Sign in to sync your trades across all devices.</div>
+    <button class="btn-google" onclick="signInWithGoogle()">
+      <svg width="20" height="20" viewBox="0 0 20 20"><path d="M19.6 10.23c0-.68-.06-1.36-.17-2H10v3.79h5.38a4.6 4.6 0 01-2 3.02v2.5h3.23c1.9-1.74 3-4.3 3-7.31z" fill="#4285F4"/><path d="M10 20c2.7 0 4.96-.89 6.62-2.42l-3.23-2.5c-.9.6-2.04.96-3.39.96-2.6 0-4.81-1.76-5.6-4.12H1.07v2.58A10 10 0 0010 20z" fill="#34A853"/><path d="M4.4 11.92A6.02 6.02 0 014.08 10c0-.67.11-1.31.32-1.92V5.5H1.07A10 10 0 000 10c0 1.61.38 3.13 1.07 4.5l3.33-2.58z" fill="#FBBC05"/><path d="M10 3.96c1.47 0 2.79.5 3.83 1.5l2.86-2.86C14.96.89 12.7 0 10 0A10 10 0 001.07 5.5l3.33 2.58C5.19 5.72 7.4 3.96 10 3.96z" fill="#EA4335"/></svg>
+      Continue with Google
+    </button>
+    <div id="auth-error"></div>
+    <div class="auth-footer">Your data is stored securely in your personal<br>Firebase account and never shared.</div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div style="color:var(--sub);font-size:14px;font-weight:600">Loading your trades…</div>
+</div>
+
+<!-- App Shell -->
+<div id="shell">
+  <div id="sidebar">
+    <div id="logo">
+      <div class="icon">📈</div>
+      <div class="name">TradeLog</div>
+      <div class="tagline">Premium Trading Journal</div>
+    </div>
+    <div id="nav">
+      <button class="nav-item on" id="nav-dashboard" onclick="goPage('dashboard')"><span class="ni">📊</span> Dashboard</button>
+      <button class="nav-item" id="nav-trades" onclick="goPage('trades')"><span class="ni">📋</span> All Trades</button>
+      <button class="nav-item" id="nav-monthly" onclick="goPage('monthly')"><span class="ni">📅</span> Monthly</button>
+    </div>
+    <div id="sidebar-footer">
+      <button class="sb-btn" onclick="openForm()"><span>＋</span> New Trade</button>
+      <button class="sb-btn" onclick="exportData()"><span>⬇</span> Export Backup</button>
+      <label class="sb-btn" style="cursor:pointer"><span>⬆</span> Import Backup<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
+      <!-- User area -->
+      <div id="user-area" style="display:none;">
+        <img id="user-avatar" src="" alt=""/>
+        <span id="user-name"></span>
+        <button id="sign-out-btn" onclick="signOut()" title="Sign out">⏻</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="install-bar">
+      <span style="font-size:18px">💻</span>
+      <span style="font-size:13px;font-weight:600;color:var(--sub);flex:1">Install TradeLog as a desktop app</span>
+      <button id="install-btn" class="btn-p" style="padding:8px 16px;font-size:13px">Install App</button>
+      <button onclick="document.getElementById('install-bar').classList.remove('show')" class="btn-g" style="padding:8px 12px;font-size:13px">✕</button>
+    </div>
+    <div id="topbar">
+      <h1 id="page-title">Dashboard</h1>
+      <div class="actions">
+        <div id="topbar-extra"></div>
+        <div id="sync-indicator" title="Sync status">
+          <div id="sync-dot"></div>
+          <span id="sync-text">Cloud</span>
+        </div>
+        <button class="btn-p" onclick="openForm()">＋ New Trade</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div id="page" style="flex:1;overflow-y:auto;padding:28px;"></div>
+      <div id="detail-panel"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-bg" onclick="if(event.target===this)closeForm();">
+  <div id="modal"><div id="modal-content"></div></div>
+</div>
+
+<!-- Firebase SDKs -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult,
+  onAuthStateChanged, signOut as fbSignOut
+} from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+import {
+  getFirestore, collection, doc, setDoc, deleteDoc,
+  onSnapshot, query, orderBy, writeBatch, getDocs
+} from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+
+// ── Firebase Config ──────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyDdw_u4jMO6uFBI7l7t0wos311LtShHi3Y",
+  authDomain: "trading-journal-67d67.firebaseapp.com",
+  projectId: "trading-journal-67d67",
+  storageBucket: "trading-journal-67d67.firebasestorage.app",
+  messagingSenderId: "835382222973",
+  appId: "1:835382222973:web:fc2b5d56616fde34175114",
+  measurementId: "G-V55XCC4QLL"
+};
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ── Handle redirect result on page load ─────────────────────
+getRedirectResult(auth).catch(e => {
+  const errEl = document.getElementById('auth-error');
+  let msg = e.message || 'Unknown error';
+  if (e.code === 'auth/unauthorized-domain') {
+    msg = 'Domain not authorized. Open Firebase Console → Authentication → Settings → Authorized domains and add the domain you\'re running this from.';
+  }
+  errEl.textContent = msg;
+  errEl.style.display = 'block';
+});
+
+// ── Expose auth/db helpers to global scope ───────────────────
+window._fbAuth = auth;
+window._fbDb = db;
+window._fbSignOut = fbSignOut;
+window._fbCollection = collection;
+window._fbDoc = doc;
+window._fbSetDoc = setDoc;
+window._fbDeleteDoc = deleteDoc;
+window._fbQuery = query;
+window._fbOrderBy = orderBy;
+window._fbOnSnapshot = onSnapshot;
+window._fbWriteBatch = writeBatch;
+window._fbGetDocs = getDocs;
+
+// ── Auth state listener ──────────────────────────────────────
+onAuthStateChanged(auth, user => {
+  if (user) {
+    window._currentUser = user;
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('user-area').style.display = 'flex';
+    const av = document.getElementById('user-avatar');
+    av.src = user.photoURL || '';
+    av.style.display = user.photoURL ? 'block' : 'none';
+    document.getElementById('user-name').textContent = user.displayName || user.email || 'Trader';
+    startFirestoreSync();
+  } else {
+    window._currentUser = null;
+    document.getElementById('auth-screen').classList.remove('hidden');
+    document.getElementById('loading-overlay').classList.add('hidden');
+    document.getElementById('user-area').style.display = 'none';
+    if (window._unsubscribeSnapshot) { window._unsubscribeSnapshot(); window._unsubscribeSnapshot = null; }
+  }
+});
+
+// ── Firestore real-time sync ─────────────────────────────────
+function startFirestoreSync() {
+  setSyncStatus('syncing', 'Syncing…');
+  document.getElementById('loading-overlay').classList.remove('hidden');
+
+  const uid = window._currentUser.uid;
+  const tradesCol = collection(db, 'users', uid, 'trades');
+  const q = query(tradesCol, orderBy('entryDate', 'desc'));
+
+  window._unsubscribeSnapshot = onSnapshot(q, snapshot => {
+    const loaded = [];
+    snapshot.forEach(d => loaded.push({ ...d.data(), _docId: d.id }));
+    // If first load and no cloud data, seed with SEED array
+    if (loaded.length === 0 && window._firstLoad) {
+      seedToFirestore(uid, tradesCol);
+    } else {
+      window._firstLoad = false;
+      window.trades = loaded;
+      window.nextId = loaded.length ? Math.max(...loaded.map(t => t.id || 0)) + 1 : 40;
+      document.getElementById('loading-overlay').classList.add('hidden');
+      setSyncStatus('synced', 'Synced');
+      window.render && window.render();
+    }
+  }, err => {
+    console.error('Firestore error:', err);
+    setSyncStatus('error', 'Error');
+    document.getElementById('loading-overlay').classList.add('hidden');
+  });
+}
+
+async function seedToFirestore(uid, tradesCol) {
+  window._firstLoad = false;
+  setSyncStatus('syncing', 'Uploading…');
+  try {
+    const batch = writeBatch(db);
+    SEED.forEach(t => {
+      const ref = doc(tradesCol, String(t.id));
+      batch.set(ref, { ...t, _docId: String(t.id) });
+    });
+    await batch.commit();
+    setSyncStatus('synced', 'Synced');
+  } catch(e) {
+    console.error('Seed error:', e);
+    setSyncStatus('error', 'Error');
+  }
+}
+
+// ── Expose Firestore write helpers ───────────────────────────
+window._saveTrade = async function(tradeObj) {
+  if (!window._currentUser) return;
+  const uid = window._currentUser.uid;
+  setSyncStatus('syncing', 'Saving…');
+  try {
+    const ref = doc(db, 'users', uid, 'trades', String(tradeObj.id));
+    await setDoc(ref, { ...tradeObj, _docId: String(tradeObj.id) });
+    setSyncStatus('synced', 'Saved ✓');
+    setTimeout(() => setSyncStatus('synced', 'Synced'), 1500);
+  } catch(e) {
+    console.error('Save error:', e);
+    setSyncStatus('error', 'Save failed');
+  }
+};
+
+window._deleteTrade = async function(id) {
+  if (!window._currentUser) return;
+  const uid = window._currentUser.uid;
+  setSyncStatus('syncing', 'Deleting…');
+  try {
+    await deleteDoc(doc(db, 'users', uid, 'trades', String(id)));
+    setSyncStatus('synced', 'Deleted');
+    setTimeout(() => setSyncStatus('synced', 'Synced'), 1500);
+  } catch(e) {
+    console.error('Delete error:', e);
+    setSyncStatus('error', 'Delete failed');
+  }
+};
+
+// ── Auth actions ─────────────────────────────────────────────
+window.signInWithGoogle = async function() {
+  const errEl = document.getElementById('auth-error');
+  errEl.style.display = 'none';
+  const btn = document.querySelector('.btn-google');
+  if (btn) { btn.textContent = 'Redirecting to Google…'; btn.disabled = true; }
+  try {
+    // signInWithRedirect works in local files, popup doesn't
+    await signInWithRedirect(auth, new GoogleAuthProvider());
+  } catch(e) {
+    errEl.textContent = 'Sign-in failed: ' + (e.message || 'Unknown error');
+    errEl.style.display = 'block';
+    if (btn) { btn.disabled = false; btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 20 20"><path d="M19.6 10.23c0-.68-.06-1.36-.17-2H10v3.79h5.38a4.6 4.6 0 01-2 3.02v2.5h3.23c1.9-1.74 3-4.3 3-7.31z" fill="#4285F4"/><path d="M10 20c2.7 0 4.96-.89 6.62-2.42l-3.23-2.5c-.9.6-2.04.96-3.39.96-2.6 0-4.81-1.76-5.6-4.12H1.07v2.58A10 10 0 0010 20z" fill="#34A853"/><path d="M4.4 11.92A6.02 6.02 0 014.08 10c0-.67.11-1.31.32-1.92V5.5H1.07A10 10 0 000 10c0 1.61.38 3.13 1.07 4.5l3.33-2.58z" fill="#FBBC05"/><path d="M10 3.96c1.47 0 2.79.5 3.83 1.5l2.86-2.86C14.96.89 12.7 0 10 0A10 10 0 001.07 5.5l3.33 2.58C5.19 5.72 7.4 3.96 10 3.96z" fill="#EA4335"/></svg> Continue with Google`; }
+  }
+};
+
+window.signOut = async function() {
+  if (!confirm('Sign out of TradeLog?')) return;
+  await fbSignOut(auth);
+};
+
+// ── Sync indicator ───────────────────────────────────────────
+function setSyncStatus(state, text) {
+  const el = document.getElementById('sync-indicator');
+  el.className = '';
+  el.classList.add(state);
+  document.getElementById('sync-text').textContent = text;
+}
+window._setSyncStatus = setSyncStatus;
+
+</script>
+
+<!-- App Logic -->
+<script>
+window._firstLoad = true;
+
+const TYPES=['SCALPING','SHORT TERM','WIT','MIT','CMP','FOLLOW UP','INVESTMENT'];
+const RESULTS=['RUNNING','PROFIT','LOSS','BREAKEVEN'];
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const RM={
+  PROFIT:   {c:'#00C896',bg:'rgba(0,200,150,0.08)',icon:'↑'},
+  LOSS:     {c:'#FF5C7A',bg:'rgba(255,92,122,0.08)',icon:'↓'},
+  BREAKEVEN:{c:'#60A5FA',bg:'rgba(96,165,250,0.08)',icon:'⇌'},
+  RUNNING:  {c:'#F59E0B',bg:'rgba(245,158,11,0.08)',icon:'◉'},
+};
+
+const SEED=[
+  {id:1, stock:"AU SMALL BANK",      entryDate:"2026-01-13", exitDate:"2026-01-13", entry:972.15,  stoploss:965.55,  target:980.96,  exitPrice:null, pnl:-250,  brokerage:0, type:"SCALPING",   result:"LOSS",      why:"", mistake:""},
+  {id:2, stock:"ICICI LOM",          entryDate:"2026-01-14", exitDate:"2026-01-16", entry:1855.8,  stoploss:1818.9,  target:1893.1,  exitPrice:null, pnl:140,   brokerage:0, type:"SCALPING",   result:"PROFIT",    why:"", mistake:""},
+  {id:3, stock:"EQUITAS",            entryDate:"2026-01-13", exitDate:"2026-01-19", entry:67.77,   stoploss:64.88,   target:80.25,   exitPrice:null, pnl:43,    brokerage:0, type:"SHORT TERM",  result:"PROFIT",    why:"", mistake:""},
+  {id:4, stock:"JM FINANCIAL",       entryDate:"2026-01-20", exitDate:"2026-01-20", entry:131.65,  stoploss:126.66,  target:135.3,   exitPrice:null, pnl:-33,   brokerage:0, type:"SCALPING",   result:"LOSS",      why:"", mistake:""},
+  {id:5, stock:"DEVYANI INTERNATIONAL", entryDate:"2026-01-20", exitDate:"2026-01-20", entry:126.11, stoploss:120.98, target:130,    exitPrice:null, pnl:-33,   brokerage:0, type:"SCALPING",   result:"LOSS",      why:"", mistake:""},
+  {id:6, stock:"NAHAR INDUSTRIAL",   entryDate:"2026-01-20", exitDate:"2026-01-21", entry:98.15,   stoploss:93.72,   target:100.2,   exitPrice:null, pnl:-253,  brokerage:0, type:"SCALPING",   result:"LOSS",      why:"", mistake:""},
+  {id:7, stock:"NYKAA",              entryDate:"2026-01-20", exitDate:"2026-01-21", entry:245.5,   stoploss:239.65,  target:251.3,   exitPrice:null, pnl:-253,  brokerage:0, type:"SCALPING",   result:"LOSS",      why:"", mistake:""},
+  {id:8, stock:"BEML",               entryDate:"2026-01-21", exitDate:"2026-01-22", entry:1683.8,  stoploss:1638.1,  target:1730,    exitPrice:null, pnl:83,    brokerage:0, type:"SCALPING",   result:"PROFIT",    why:"", mistake:""},
+  {id:9, stock:"VASCON ENGINEER",    entryDate:"2026-01-27", exitDate:"2026-01-27", entry:40.55,   stoploss:39.02,   target:41.7,    exitPrice:null, pnl:36,    brokerage:0, type:"SCALPING",   result:"PROFIT",    why:"", mistake:""},
+  {id:10,stock:"PAYTM",              entryDate:"2026-01-27", exitDate:"2026-01-27", entry:1126.8,  stoploss:1090.9,  target:1161,    exitPrice:null, pnl:36,    brokerage:0, type:"SCALPING",   result:"PROFIT",    why:"", mistake:""},
+  {id:11,stock:"JIO FINANCIAL SERVICES", entryDate:"2026-01-27", exitDate:"",      entry:250.75,  stoploss:239.75,  target:274,     exitPrice:null, pnl:1180,  brokerage:0, type:"MIT",        result:"PROFIT",    why:"", mistake:""},
+  {id:12,stock:"IRCON INTERNATIONAL",entryDate:"2026-01-29", exitDate:"2026-01-29", entry:161.29,  stoploss:160.14,  target:162.19,  exitPrice:null, pnl:94,    brokerage:0, type:"SCALPING",   result:"PROFIT",    why:"", mistake:""},
+  {id:13,stock:"GUJARAT MINERAL",    entryDate:"2026-01-30", exitDate:"2026-01-30", entry:575.4,   stoploss:571.05,  target:578,     exitPrice:null, pnl:47,    brokerage:0, type:"SCALPING",   result:"PROFIT",    why:"", mistake:""},
+  {id:14,stock:"UJJIVAN BANK",       entryDate:"2026-01-05", exitDate:"2026-01-05", entry:64.44,   stoploss:63,      target:65.45,   exitPrice:null, pnl:123,   brokerage:0, type:"SCALPING",   result:"PROFIT",    why:"", mistake:""},
+  {id:15,stock:"MAX FINANCIAL",      entryDate:"2026-02-10", exitDate:"2026-02-10", entry:1732.4,  stoploss:1711.3,  target:1752,    exitPrice:null, pnl:124,   brokerage:0, type:"SCALPING",   result:"PROFIT",    why:"", mistake:""},
+  {id:16,stock:"GUJARAT MINERAL",    entryDate:"2026-02-10", exitDate:"2026-02-11", entry:603,     stoploss:591,     target:610,     exitPrice:null, pnl:-87,   brokerage:0, type:"SCALPING",   result:"LOSS",      why:"", mistake:""},
+  {id:17,stock:"HCL TECHNOLOGY",     entryDate:"2026-02-11", exitDate:"2026-02-11", entry:1505.3,  stoploss:1483.1,  target:1548,    exitPrice:null, pnl:-187,  brokerage:0, type:"SCALPING",   result:"LOSS",      why:"", mistake:""},
+  {id:18,stock:"LLOYDS METAL & ENER",entryDate:"2026-02-16", exitDate:"2026-02-16", entry:1177.9,  stoploss:1157.5,  target:1189,    exitPrice:null, pnl:62,    brokerage:0, type:"SCALPING",   result:"PROFIT",    why:"", mistake:""},
+  {id:19,stock:"BANK OF INDIA",      entryDate:"2026-02-17", exitDate:"2026-02-17", entry:169.65,  stoploss:168.66,  target:170,     exitPrice:null, pnl:61,    brokerage:0, type:"SCALPING",   result:"PROFIT",    why:"", mistake:""},
+  {id:20,stock:"RAIN INDUSTRY",      entryDate:"2026-02-20", exitDate:"2026-02-24", entry:145.37,  stoploss:141.51,  target:149.03,  exitPrice:null, pnl:0,     brokerage:0, type:"WIT",        result:"BREAKEVEN", why:"", mistake:""},
+  {id:21,stock:"IDFC BANK",          entryDate:"2026-02-23", exitDate:"",           entry:70.98,   stoploss:null,    target:86.16,   exitPrice:null, pnl:null,  brokerage:0, type:"SHORT TERM",  result:"RUNNING",   why:"INVESTMENT", mistake:""},
+  {id:22,stock:"NYKAA",              entryDate:"2026-02-24", exitDate:"2026-02-25", entry:261.74,  stoploss:256.22,  target:266.21,  exitPrice:null, pnl:226,   brokerage:0, type:"WIT",        result:"PROFIT",    why:"", mistake:""},
+  {id:23,stock:"SAMMAN CAPITAL",     entryDate:"2026-02-26", exitDate:"2026-02-26", entry:154.7,   stoploss:153.27,  target:155,     exitPrice:null, pnl:-197,  brokerage:0, type:"SCALPING",   result:"LOSS",      why:"", mistake:""},
+  {id:24,stock:"UCO BANK",           entryDate:"2026-02-27", exitDate:"",           entry:30.1,    stoploss:null,    target:43,      exitPrice:null, pnl:null,  brokerage:0, type:"SHORT TERM",  result:"RUNNING",   why:"INVESTMENT", mistake:""},
+  {id:25,stock:"CDSL",               entryDate:"2026-03-02", exitDate:"2026-03-09", entry:1240.2,  stoploss:1186,    target:1325,    exitPrice:null, pnl:-469,  brokerage:0, type:"FOLLOW UP",  result:"LOSS",      why:"", mistake:""},
+  {id:26,stock:"SAMMAN CAPITAL",     entryDate:"2026-03-02", exitDate:"",           entry:148.49,  stoploss:null,    target:180.79,  exitPrice:null, pnl:null,  brokerage:0, type:"SHORT TERM",  result:"RUNNING",   why:"INVESTMENT", mistake:""},
+  {id:27,stock:"VASCON ENGINEER",    entryDate:"2026-03-02", exitDate:"2026-03-09", entry:36.99,   stoploss:33.85,   target:44.84,   exitPrice:null, pnl:-469,  brokerage:0, type:"MIT",        result:"LOSS",      why:"", mistake:""},
+  {id:28,stock:"KOLTE PATIL",        entryDate:"2026-03-03", exitDate:"2026-03-09", entry:337,     stoploss:316,     target:350,     exitPrice:null, pnl:-469,  brokerage:0, type:"MIT",        result:"LOSS",      why:"", mistake:""},
+  {id:29,stock:"SAMMAN CAPITAL",     entryDate:"2026-03-09", exitDate:"",           entry:53.41,   stoploss:51.36,   target:61,      exitPrice:null, pnl:null,  brokerage:0, type:"MIT",        result:"RUNNING",   why:"", mistake:""},
+  {id:30,stock:"UJJIVAN BANK",       entryDate:"2026-03-10", exitDate:"2026-04-08", entry:53.43,   stoploss:50,      target:61,      exitPrice:null, pnl:510,   brokerage:0, type:"SHORT TERM",  result:"PROFIT",    why:"", mistake:""},
+  {id:31,stock:"BAJAJHIND SUGAR",    entryDate:"2026-03-12", exitDate:"2026-03-16", entry:16.94,   stoploss:16.05,   target:18.32,   exitPrice:null, pnl:-163,  brokerage:0, type:"CMP",        result:"LOSS",      why:"", mistake:""},
+  {id:32,stock:"BANDHAN BANK",       entryDate:"2026-03-24", exitDate:"2026-03-30", entry:149.1,   stoploss:144.29,  target:158,     exitPrice:null, pnl:-185,  brokerage:0, type:"MIT",        result:"LOSS",      why:"", mistake:""},
+  {id:33,stock:"CYENT",              entryDate:"2026-04-30", exitDate:"2026-04-30", entry:879.7,   stoploss:898.55,  target:871,     exitPrice:null, pnl:98,    brokerage:0, type:"SCALPING",   result:"PROFIT",    why:"", mistake:""},
+  {id:34,stock:"UNITED SPIRITS",     entryDate:"2026-05-05", exitDate:"2026-05-06", entry:1310.1,  stoploss:1287.9,  target:1332,    exitPrice:null, pnl:-154,  brokerage:0, type:"SCALPING",   result:"LOSS",      why:"", mistake:""},
+  {id:35,stock:"AU SMALL BANK",      entryDate:"2026-05-12", exitDate:"2026-05-12", entry:1007.9,  stoploss:1000,    target:1016,    exitPrice:null, pnl:0,     brokerage:0, type:"SCALPING",   result:"BREAKEVEN", why:"", mistake:""},
+  {id:36,stock:"KARNATAKA BANK",     entryDate:"2026-05-12", exitDate:"",           entry:249.3,   stoploss:238.9,   target:259.6,   exitPrice:null, pnl:null,  brokerage:0, type:"WIT",        result:"RUNNING",   why:"", mistake:""},
+  {id:37,stock:"ANGEL ONE",          entryDate:"2026-05-12", exitDate:"2026-05-14", entry:299.6,   stoploss:285.95,  target:313,     exitPrice:null, pnl:-95,   brokerage:0, type:"SCALPING",   result:"LOSS",      why:"", mistake:""},
+  {id:38,stock:"AMBER ENTERPRISE",   entryDate:"2026-05-14", exitDate:"2026-05-14", entry:8026.5,  stoploss:7750,    target:8501,    exitPrice:null, pnl:206,   brokerage:0, type:"WIT",        result:"PROFIT",    why:"", mistake:""},
+  {id:39,stock:"AXIS BANK",          entryDate:"2026-05-14", exitDate:"2026-05-14", entry:1236.3,  stoploss:1214.4,  target:1216.1,  exitPrice:null, pnl:142,   brokerage:0, type:"SCALPING",   result:"PROFIT",    why:"", mistake:""},
+];
+
+window.trades = [];
+window.nextId = 40;
+let currentPage = 'dashboard', editingId = null;
+let filterResult = 'ALL', filterType = 'ALL', selectedId = null, formData = {};
+
+// ── Helpers ──────────────────────────────────────────────────
+function fmt(n){return Number(n).toLocaleString('en-IN',{maximumFractionDigits:2});}
+function netOf(t){return(t.pnl!==null&&t.pnl!==''&&t.pnl!==undefined)?Number(t.pnl)-Number(t.brokerage||0):null;}
+function cleanTrade(t){
+  // Remove internal Firestore field before saving
+  const c = {...t};
+  delete c._docId;
+  return c;
+}
+
+// ── Save / Delete (Firestore) ────────────────────────────────
+async function save(tradeObj){ await window._saveTrade(cleanTrade(tradeObj)); }
+async function deleteFromDb(id){ await window._deleteTrade(id); }
+
+// ── PWA ──────────────────────────────────────────────────────
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('install-bar').classList.add('show');});
+document.getElementById('install-btn').onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;document.getElementById('install-bar').classList.remove('show');};
+window.addEventListener('appinstalled',()=>document.getElementById('install-bar').classList.remove('show'));
+if('serviceWorker' in navigator){const sw=`const C='tl-v3';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['./']))));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));`;navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'text/javascript'}))).catch(()=>{});}
+
+// ── Export / Import ──────────────────────────────────────────
+function exportData(){
+  const b=new Blob([JSON.stringify(window.trades.map(cleanTrade),null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download='tradelog-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+}
+async function importData(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=async ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(Array.isArray(d)){
+        if(!confirm('Import '+d.length+' trades? This will add them to your cloud journal.'))return;
+        for(const t of d){ await window._saveTrade(cleanTrade(t)); }
+        alert('✅ '+d.length+' trades imported to cloud!');
+      }
+    }catch{alert('❌ Invalid file');}
+  };
+  r.readAsText(f);e.target.value='';
+}
+
+// ── Routing ──────────────────────────────────────────────────
+function goPage(p){
+  currentPage=p;selectedId=null;closeDetailPanel();
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('on'));
+  const nb=document.getElementById('nav-'+p);if(nb)nb.classList.add('on');
+  document.getElementById('page-title').textContent={dashboard:'Dashboard',trades:'All Trades',monthly:'Monthly P&L'}[p]||p;
+  document.getElementById('topbar-extra').innerHTML='';
+  render();
+}
+
+window.render=function render(){
+  const pg=document.getElementById('page');pg.scrollTop=0;
+  if(currentPage==='dashboard')renderDashboard(pg);
+  else if(currentPage==='trades')renderTrades(pg);
+  else if(currentPage==='monthly')renderMonthly(pg);
+};
+
+// ── Dashboard ────────────────────────────────────────────────
+function renderDashboard(pg){
+  const t_all=window.trades;
+  const profits=t_all.filter(t=>t.result==='PROFIT').length;
+  const losses=t_all.filter(t=>t.result==='LOSS').length;
+  const running=t_all.filter(t=>t.result==='RUNNING').length;
+  const breakeven=t_all.filter(t=>t.result==='BREAKEVEN').length;
+  const closed=t_all.filter(t=>t.result!=='RUNNING');
+  const netTotal=t_all.reduce((s,t)=>{const v=netOf(t);return v!==null?s+v:s;},0);
+  const winBase=closed.filter(t=>t.result!=='BREAKEVEN').length;
+  const winRate=winBase>0?(profits/winBase*100):0;
+  const totalBrok=t_all.reduce((s,t)=>s+Number(t.brokerage||0),0);
+  const recent=[...t_all].sort((a,b)=>(b.entryDate||'').localeCompare(a.entryDate||'')).slice(0,10);
+  pg.innerHTML=`<div class="fi">
+    <div class="stat-grid">
+      <div class="stat" style="background:linear-gradient(135deg,#1a1630,#0f1020);border-color:rgba(108,99,255,.2);">
+        <div class="sl">Net P&L</div>
+        <div class="sv mono" style="color:${netTotal>=0?'var(--green)':'var(--red)'};font-size:22px">${netTotal>=0?'+':''}₹${fmt(Math.abs(netTotal))}</div>
+        <div class="ss">Brokerage: ₹${fmt(totalBrok)}</div>
+      </div>
+      <div class="stat"><div class="sl">Win Rate</div><div class="sv mono" style="color:${winRate>=50?'var(--green)':'var(--red)'}">${isNaN(winRate)?'—':winRate.toFixed(1)+'%'}</div><div class="ss">${profits}W · ${losses}L · ${breakeven} BE</div></div>
+      <div class="stat"><div class="sl">Total Trades</div><div class="sv mono">${t_all.length}</div><div class="ss">${running} running · ${closed.length} closed</div></div>
+      <div class="stat" style="background:var(--gBg);border-color:rgba(0,200,150,.15)"><div class="sl" style="color:var(--green)">Profits</div><div class="sv mono" style="color:var(--green)">↑${profits}</div><div class="ss">Winning trades</div></div>
+      <div class="stat" style="background:var(--rBg);border-color:rgba(255,92,122,.15)"><div class="sl" style="color:var(--red)">Losses</div><div class="sv mono" style="color:var(--red)">↓${losses}</div><div class="ss">Losing trades</div></div>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between">
+        <div class="stitle" style="margin:0">Recent Trades</div>
+        <button onclick="goPage('trades')" style="background:transparent;border:none;color:var(--acc);font-size:13px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">View all →</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl"><thead><tr>
+          <th>Stock</th><th>Entry Date</th><th>Exit Date</th><th>Entry</th>
+          <th>SL</th><th>Target</th><th>Type</th><th>Result</th><th>Net P&L</th>
+        </tr></thead><tbody>
+          ${recent.map(t=>{const net=netOf(t);const rm=RM[t.result];return`
+            <tr class="trow" onclick="openDetail(${t.id})">
+              <td><div style="font-weight:700">${t.stock}</div></td>
+              <td class="mono" style="color:var(--sub)">${t.entryDate||'—'}</td>
+              <td class="mono" style="color:var(--sub)">${t.exitDate||'—'}</td>
+              <td class="mono">₹${fmt(t.entry)}</td>
+              <td class="mono" style="color:var(--red)">${t.stoploss?'₹'+fmt(t.stoploss):'—'}</td>
+              <td class="mono" style="color:var(--green)">${t.target?'₹'+fmt(t.target):'—'}</td>
+              <td><span style="background:var(--s3);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600">${t.type}</span></td>
+              <td><span class="pill" style="background:${rm.bg};color:${rm.c}">${rm.icon} ${t.result}</span></td>
+              <td class="mono" style="font-weight:700;color:${net!==null?rm.c:'var(--mut)'}">${net!==null?'₹'+fmt(net):'—'}</td>
+            </tr>`}).join('')}
+        </tbody></table>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── All Trades ───────────────────────────────────────────────
+function renderTrades(pg){
+  const filtered=[...window.trades]
+    .filter(t=>filterResult==='ALL'||t.result===filterResult)
+    .filter(t=>filterType==='ALL'||t.type===filterType)
+    .sort((a,b)=>(b.entryDate||'').localeCompare(a.entryDate||''));
+  document.getElementById('topbar-extra').innerHTML=`<span style="font-size:13px;color:var(--mut);font-weight:500;margin-right:8px">${filtered.length} of ${window.trades.length} trades</span>`;
+  pg.innerHTML=`<div class="fi">
+    <div class="filter-bar">
+      <span style="font-size:12px;font-weight:700;color:var(--mut);letter-spacing:.08em;text-transform:uppercase">Result:</span>
+      ${['ALL',...RESULTS].map(r=>{const rm=RM[r];const on=filterResult===r;return`<button class="f-btn ${on?'on':''}" onclick="setFR('${r}')" style="${on&&rm?'background:'+rm.bg+';color:'+rm.c+';border-color:'+rm.c+'44':''}">${r}</button>`;}).join('')}
+      <span style="font-size:12px;font-weight:700;color:var(--mut);letter-spacing:.08em;text-transform:uppercase;margin-left:8px">Type:</span>
+      ${['ALL',...TYPES].map(t=>{const on=filterType===t;return`<button class="f-btn ${on?'on':''}" onclick="setFT('${t}')">${t}</button>`;}).join('')}
+      ${(filterResult!=='ALL'||filterType!=='ALL')?`<button onclick="clearFilters()" style="background:var(--rBg);color:var(--red);border:1.5px solid rgba(255,92,122,.2);border-radius:9px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">✕ Clear</button>`:''}
+    </div>
+    ${filtered.length===0?`<div class="card" style="padding:60px;text-align:center"><div style="font-size:40px;margin-bottom:14px">🔍</div><div style="color:var(--sub);font-size:15px">No trades match filters.</div></div>`:`
+    <div class="card" style="overflow:hidden">
+      <div style="overflow-x:auto">
+        <table class="tbl"><thead><tr>
+          <th>#</th><th>Stock</th><th>Entry Date</th><th>Exit Date</th>
+          <th>Entry</th><th>SL</th><th>Target</th><th>Exit</th>
+          <th>P&L</th><th>Brok</th><th>Net P&L</th>
+          <th>Type</th><th>Result</th><th style="text-align:center">Actions</th>
+        </tr></thead><tbody>
+          ${filtered.map((t,i)=>{const net=netOf(t);const rm=RM[t.result];const sel=selectedId===t.id;return`
+            <tr class="trow ${sel?'selected':''}" onclick="openDetail(${t.id})">
+              <td style="color:var(--mut);font-size:12px">${i+1}</td>
+              <td><div style="font-weight:700;white-space:nowrap">${t.stock}</div></td>
+              <td class="mono" style="color:var(--sub);white-space:nowrap">${t.entryDate||'—'}</td>
+              <td class="mono" style="color:var(--sub);white-space:nowrap">${t.exitDate||'—'}</td>
+              <td class="mono">₹${fmt(t.entry)}</td>
+              <td class="mono" style="color:var(--red)">${t.stoploss?'₹'+fmt(t.stoploss):'—'}</td>
+              <td class="mono" style="color:var(--green)">${t.target?'₹'+fmt(t.target):'—'}</td>
+              <td class="mono">${t.exitPrice?'₹'+fmt(t.exitPrice):'—'}</td>
+              <td class="mono" style="color:${t.pnl!==null&&t.pnl!==''?Number(t.pnl)>=0?'var(--green)':'var(--red)':'var(--mut)'}">${t.pnl!==null&&t.pnl!==''&&t.pnl!==undefined?'₹'+fmt(t.pnl):'—'}</td>
+              <td class="mono" style="color:var(--mut)">₹${fmt(t.brokerage||0)}</td>
+              <td class="mono" style="font-weight:700;color:${net!==null?rm.c:'var(--mut)'}">${net!==null?'₹'+fmt(net):'—'}</td>
+              <td><span style="background:var(--s3);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;white-space:nowrap">${t.type}</span></td>
+              <td><span class="pill" style="background:${rm.bg};color:${rm.c};white-space:nowrap">${rm.icon} ${t.result}</span></td>
+              <td onclick="event.stopPropagation()" style="text-align:center;white-space:nowrap">
+                <button onclick="openFormEdit(${t.id})" style="background:var(--accBg);color:var(--acc);border:none;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;margin-right:4px;font-family:'Plus Jakarta Sans',sans-serif">✏ Edit</button>
+                <button onclick="deleteTrade(${t.id})" style="background:var(--rBg);color:var(--red);border:none;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">🗑 Del</button>
+              </td>
+            </tr>`}).join('')}
+        </tbody></table>
+      </div>
+    </div>`}
+  </div>`;
+  if(selectedId)openDetail(selectedId);
+}
+
+function setFR(r){filterResult=r;selectedId=null;closeDetailPanel();renderTrades(document.getElementById('page'));}
+function setFT(t){filterType=t;selectedId=null;closeDetailPanel();renderTrades(document.getElementById('page'));}
+function clearFilters(){filterResult='ALL';filterType='ALL';selectedId=null;closeDetailPanel();renderTrades(document.getElementById('page'));}
+
+// ── Monthly ──────────────────────────────────────────────────
+function renderMonthly(pg){
+  const t_all=window.trades;
+  const months=[...new Set(t_all.map(t=>t.entryDate?.slice(0,7)).filter(Boolean))].sort();
+  const netTotal=t_all.reduce((s,t)=>{const v=netOf(t);return v!==null?s+v:s;},0);
+  const totalBrok=t_all.reduce((s,t)=>s+Number(t.brokerage||0),0);
+  const mData=months.map(m=>{
+    const mt=t_all.filter(t=>t.entryDate?.startsWith(m));
+    const pnl=mt.reduce((s,t)=>{const v=netOf(t);return v!==null?s+v:s;},0);
+    return{m,pnl,count:mt.length,w:mt.filter(t=>t.result==='PROFIT').length,l:mt.filter(t=>t.result==='LOSS').length,be:mt.filter(t=>t.result==='BREAKEVEN').length};
+  });
+  const maxAbs=Math.max(...mData.map(m=>Math.abs(m.pnl)),1);
+  pg.innerHTML=`<div class="fi">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+      <div class="stat" style="background:linear-gradient(135deg,#1a1630,#0f1020);border-color:rgba(108,99,255,.2)">
+        <div class="sl">Overall Net P&L</div>
+        <div class="sv mono" style="color:${netTotal>=0?'var(--green)':'var(--red)'};font-size:20px">${netTotal>=0?'+':''}₹${fmt(Math.abs(netTotal))}</div>
+        <div class="ss">Brokerage: ₹${fmt(totalBrok)}</div>
+      </div>
+      <div class="stat"><div class="sl">Months</div><div class="sv mono">${months.length}</div><div class="ss">Tracked periods</div></div>
+      <div class="stat" style="background:var(--gBg);border-color:rgba(0,200,150,.15)"><div class="sl" style="color:var(--green)">Profitable Months</div><div class="sv mono" style="color:var(--green)">${mData.filter(m=>m.pnl>0).length}</div><div class="ss">of ${months.length} months</div></div>
+      <div class="stat" style="background:var(--rBg);border-color:rgba(255,92,122,.15)"><div class="sl" style="color:var(--red)">Loss Months</div><div class="sv mono" style="color:var(--red)">${mData.filter(m=>m.pnl<0).length}</div><div class="ss">of ${months.length} months</div></div>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--bdr)"><div class="stitle" style="margin:0">Monthly Breakdown</div></div>
+      <table class="tbl"><thead><tr><th>Month</th><th>Trades</th><th>Won</th><th>Lost</th><th>BE</th><th>Win Rate</th><th>Net P&L</th><th style="width:30%">Bar</th></tr></thead>
+        <tbody>${[...mData].reverse().map(m=>{
+          const [yr,mo]=m.m.split('-');
+          const wr=m.w+m.l>0?((m.w/(m.w+m.l))*100).toFixed(1)+'%':'—';
+          const bar=(Math.abs(m.pnl)/maxAbs*100);
+          return`<tr>
+            <td style="font-weight:700">${MONTHS[parseInt(mo)-1]} ${yr}</td>
+            <td class="mono">${m.count}</td>
+            <td class="mono" style="color:var(--green)">↑${m.w}</td>
+            <td class="mono" style="color:var(--red)">↓${m.l}</td>
+            <td class="mono" style="color:var(--blue)">${m.be}</td>
+            <td class="mono" style="color:${parseFloat(wr)>=50?'var(--green)':'var(--red)'}">${wr}</td>
+            <td class="mono" style="font-weight:700;color:${m.pnl>0?'var(--green)':m.pnl<0?'var(--red)':'var(--sub)'}">${m.pnl!==0?(m.pnl>0?'+':'')+'₹'+fmt(m.pnl):'₹0'}</td>
+            <td><div style="display:flex;align-items:center;gap:8px"><div class="mbar-wrap"><div class="mbar" style="width:${bar}%;background:${m.pnl>=0?'var(--green)':'var(--red)'}"></div></div></div></td>
+          </tr>`;}).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ── Detail Panel ─────────────────────────────────────────────
+function openDetail(id){
+  selectedId=id;
+  const t=window.trades.find(x=>x.id===id);if(!t)return;
+  const net=netOf(t);const rm=RM[t.result];
+  const dp=document.getElementById('detail-panel');
+  dp.classList.add('open');
+  dp.innerHTML=`<div class="si" style="padding:24px;flex:1">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-weight:800;font-size:17px;letter-spacing:-.02em">Trade Detail</div>
+      <button onclick="closeDetailPanel()" style="background:var(--s3);border:1px solid var(--bdr);color:var(--sub);border-radius:8px;width:30px;height:30px;font-size:16px;cursor:pointer">×</button>
+    </div>
+    <div style="background:${rm.bg};border:1px solid ${rm.c}22;border-radius:18px;padding:20px;margin-bottom:16px;text-align:center">
+      <div style="font-size:28px;margin-bottom:6px">${rm.icon}</div>
+      <div style="font-weight:800;font-size:20px;letter-spacing:-.03em">${t.stock}</div>
+      <span class="pill" style="background:rgba(0,0,0,.2);color:${rm.c};margin-top:6px">${t.result}</span>
+      ${net!==null?`<div class="mono" style="font-size:28px;font-weight:800;color:${rm.c};margin-top:12px">₹${fmt(net)}</div><div style="font-size:11px;color:var(--mut);margin-top:4px">Net P&L</div>`:''}
+    </div>
+    <div class="stitle">Price Details</div>
+    <div class="g2" style="margin-bottom:16px">
+      ${[['Entry','₹'+fmt(t.entry),''],['Stoploss',t.stoploss?'₹'+fmt(t.stoploss):'—','var(--red)'],['Target',t.target?'₹'+fmt(t.target):'—','var(--green)'],['Exit Price',t.exitPrice?'₹'+fmt(t.exitPrice):'—',''],['Gross P&L',(t.pnl!==null&&t.pnl!==''&&t.pnl!==undefined)?'₹'+fmt(t.pnl):'—',''],['Brokerage','₹'+fmt(t.brokerage||0),'var(--red)']].map(([k,v,c])=>`
+        <div class="card-sm">
+          <div style="font-size:10px;font-weight:700;color:var(--mut);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">${k}</div>
+          <div class="mono" style="font-size:14px;font-weight:700;color:${c||'var(--tx)'}">${v}</div>
+        </div>`).join('')}
+    </div>
+    <div class="stitle">Info</div>
+    <div style="background:var(--s3);border-radius:12px;padding:14px;margin-bottom:16px">
+      ${[['Type',t.type],['Entry Date',t.entryDate||'—'],['Exit Date',t.exitDate||'—']].map(([k,v],i,a)=>`
+        <div style="display:flex;justify-content:space-between;align-items:center${i<a.length-1?';padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--bdr)':''}">
+          <span style="font-size:12px;color:var(--mut);font-weight:600">${k}</span>
+          <span style="font-size:13px;font-weight:700">${v}</span>
+        </div>`).join('')}
+    </div>
+    ${t.why?`<div class="stitle">Why I Traded</div><div style="background:var(--accBg);border:1px solid rgba(108,99,255,.2);border-radius:12px;padding:14px;margin-bottom:12px;font-size:13px;line-height:1.7;color:var(--sub)">${t.why}</div>`:''}
+    ${t.mistake?`<div class="stitle">Mistake / Review</div><div style="background:var(--rBg);border:1px solid rgba(255,92,122,.2);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.7;color:var(--sub)">${t.mistake}</div>`:''}
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn-p" onclick="openFormEdit(${t.id})" style="flex:1">✏ Edit</button>
+      <button class="btn-danger" onclick="deleteTrade(${t.id})" style="flex:1">🗑 Delete</button>
+    </div>
+  </div>`;
+  if(currentPage==='trades')renderTrades(document.getElementById('page'));
+}
+
+function closeDetailPanel(){
+  selectedId=null;
+  const dp=document.getElementById('detail-panel');
+  dp.classList.remove('open');dp.innerHTML='';
+  if(currentPage==='trades')renderTrades(document.getElementById('page'));
+}
+
+async function deleteTrade(id){
+  if(!confirm('Delete this trade? This cannot be undone.'))return;
+  await deleteFromDb(id);
+  // Firestore onSnapshot will update window.trades and re-render
+  selectedId=null;closeDetailPanel();
+}
+
+// ── Form ─────────────────────────────────────────────────────
+function openForm(){
+  editingId=null;
+  formData={stock:'',entryDate:'',exitDate:'',entry:'',stoploss:'',target:'',exitPrice:'',pnl:'',brokerage:'',type:'SCALPING',result:'RUNNING',why:'',mistake:''};
+  buildForm();document.getElementById('modal-bg').classList.add('open');
+}
+function openFormEdit(id){
+  const t=window.trades.find(x=>x.id===id);if(!t)return;
+  editingId=id;
+  formData={...t,pnl:t.pnl??'',brokerage:t.brokerage??'',exitPrice:t.exitPrice??'',stoploss:t.stoploss??'',target:t.target??'',exitDate:t.exitDate??''};
+  buildForm();document.getElementById('modal-bg').classList.add('open');
+}
+function closeForm(){document.getElementById('modal-bg').classList.remove('open');editingId=null;}
+document.getElementById('modal-bg').onclick=function(e){if(e.target===this)closeForm();};
+
+function buildForm(){
+  const net=formData.pnl!==''?Number(formData.pnl)-Number(formData.brokerage||0):null;
+  document.getElementById('modal-content').innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+      <div style="font-weight:800;font-size:20px;letter-spacing:-.03em">${editingId?'✏ Edit Trade':'✦ New Trade'}</div>
+      <button onclick="closeForm()" style="background:var(--s3);border:1px solid var(--bdr);color:var(--sub);border-radius:10px;width:34px;height:34px;font-size:18px;cursor:pointer">×</button>
+    </div>
+    <div class="stitle" style="margin-bottom:14px">Trade Information</div>
+    <div style="margin-bottom:14px">
+      <label class="lbl">Stock Name *</label>
+      <input class="inp" value="${formData.stock}" placeholder="e.g. HDFC BANK" oninput="formData.stock=this.value.toUpperCase();this.value=formData.stock">
+    </div>
+    <div class="g3" style="margin-bottom:14px">
+      <div><label class="lbl">Entry Date *</label><input type="date" class="inp" value="${formData.entryDate}" oninput="formData.entryDate=this.value"></div>
+      <div><label class="lbl">Exit Date</label><input type="date" class="inp" value="${formData.exitDate}" oninput="formData.exitDate=this.value"></div>
+      <div></div>
+    </div>
+    <div class="g2" style="margin-bottom:22px">
+      <div><label class="lbl">Trade Type</label>
+        <select class="inp" onchange="formData.type=this.value">${TYPES.map(t=>`<option${t===formData.type?' selected':''}>${t}</option>`).join('')}</select>
+      </div>
+      <div><label class="lbl">Result</label>
+        <select class="inp" onchange="formData.result=this.value">${RESULTS.map(r=>`<option${r===formData.result?' selected':''}>${r}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="stitle" style="margin-bottom:14px">Risk Management</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px">
+      <div><label class="lbl">Entry Price *</label><input type="number" class="inp" value="${formData.entry}" placeholder="₹" oninput="formData.entry=this.value"></div>
+      <div><label class="lbl">Stoploss</label><input type="number" class="inp" value="${formData.stoploss}" placeholder="₹" oninput="formData.stoploss=this.value"></div>
+      <div><label class="lbl">Target</label><input type="number" class="inp" value="${formData.target}" placeholder="₹" oninput="formData.target=this.value"></div>
+      <div><label class="lbl">Exit Price</label><input type="number" class="inp" value="${formData.exitPrice}" placeholder="₹" oninput="formData.exitPrice=this.value"></div>
+      <div><label class="lbl">Gross P&L (₹)</label><input type="number" class="inp" value="${formData.pnl}" placeholder="0" oninput="formData.pnl=this.value;updateNet()"></div>
+      <div><label class="lbl">Brokerage (₹)</label><input type="number" class="inp" value="${formData.brokerage}" placeholder="0" oninput="formData.brokerage=this.value;updateNet()"></div>
+    </div>
+    <div id="net-box" style="margin-bottom:22px">${net!==null?netBox(net):''}</div>
+    <div class="stitle" style="margin-bottom:14px">Trade Psychology</div>
+    <div class="g2" style="margin-bottom:24px">
+      <div><label class="lbl">💡 Why I Traded</label><textarea class="inp" placeholder="Setup, pattern, catalyst..." oninput="formData.why=this.value">${formData.why}</textarea></div>
+      <div><label class="lbl">📝 Mistake / Review</label><textarea class="inp" placeholder="What went wrong? Lessons..." oninput="formData.mistake=this.value">${formData.mistake}</textarea></div>
+    </div>
+    <div style="display:flex;gap:12px">
+      <button class="btn-p" onclick="saveTrade()" style="flex:2">${editingId?'Update Trade':'Save Trade'}</button>
+      <button class="btn-g" onclick="closeForm()" style="flex:1">Cancel</button>
+    </div>`;
+}
+
+function netBox(net){return`<div style="background:${net>=0?'var(--gBg)':'var(--rBg)'};border:1px solid ${net>=0?'rgba(0,200,150,.2)':'rgba(255,92,122,.2)'};border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;font-weight:600;color:var(--sub)">Net P&L after brokerage</span><span class="mono" style="font-size:18px;font-weight:800;color:${net>=0?'var(--green)':'var(--red)'}">₹${fmt(net)}</span></div>`;}
+function updateNet(){const el=document.getElementById('net-box');if(!el)return;el.innerHTML=formData.pnl!==''?netBox(Number(formData.pnl)-Number(formData.brokerage||0)):'';}
+
+async function saveTrade(){
+  if(!formData.stock.trim()||!formData.entryDate||!formData.entry){alert('Stock name, entry date & entry price required!');return;}
+  const r={
+    ...formData,
+    id: editingId || window.nextId++,
+    entry:Number(formData.entry),
+    stoploss:formData.stoploss!==''?Number(formData.stoploss):null,
+    target:formData.target!==''?Number(formData.target):null,
+    exitPrice:formData.exitPrice!==''?Number(formData.exitPrice):null,
+    pnl:formData.pnl!==''?Number(formData.pnl):null,
+    brokerage:formData.brokerage!==''?Number(formData.brokerage):0
+  };
+  await save(r);
+  // Firestore onSnapshot handles re-render automatically
+  closeForm();
+  if(selectedId&&editingId)openDetail(editingId);
+}
+
+// ── Keyboard shortcuts ───────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeForm();closeDetailPanel();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='n'){e.preventDefault();openForm();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='e'){e.preventDefault();exportData();}
+});
+</script>
+</body>
+</html>
